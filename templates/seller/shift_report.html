@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Отчёт по смене</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a href="{{ brand_url }}" class="brand">Система учёта</a>
+      <p style="padding: 1rem; color: #888;">Отчёт по смене</p>
+      <a href="{{ brand_url }}" class="logout">Войти</a>
+    </aside>
+    <main class="main">
+      <h1 class="page-title">Отчёт по смене</h1>
+      <div id="report-loading" class="card">Загрузка отчёта…</div>
+      <div id="report-content" class="card" style="display: none;">
+        <h3>Смена</h3>
+        <p><strong>Продавец:</strong> <span id="report-seller"></span></p>
+        <p><strong>Магазин:</strong> <span id="report-store"></span></p>
+        <p><strong>Дата:</strong> <span id="report-date"></span></p>
+        <p><strong>Время смены:</strong> с <span id="report-start"></span> до <span id="report-end"></span></p>
+        <h3>Итоги (с учётом возвратов)</h3>
+        <p><strong>Выручка:</strong> <span id="report-revenue"></span> ₽</p>
+        <p><strong>Себестоимость:</strong> <span id="report-cost"></span> ₽</p>
+        <p><strong>Прибыль:</strong> <span id="report-profit"></span> ₽</p>
+        <h3>Операции за смену</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Тип</th>
+              <th>Время</th>
+              <th>Выручка</th>
+              <th>Себестоимость</th>
+              <th>Прибыль</th>
+            </tr>
+          </thead>
+          <tbody id="report-sales"></tbody>
+        </table>
+      </div>
+      <div id="report-error" class="card" style="display: none;">
+        <p>Смена не найдена или ошибка загрузки.</p>
+        <a href="{{ brand_url }}">Войти</a>
+      </div>
+    </main>
+  </div>
+  <script>
+(function() {
+  var shiftId = '{{ shift_id }}';
+  fetch('/api/shifts/' + shiftId + '/report')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        document.getElementById('report-loading').style.display = 'none';
+        document.getElementById('report-error').style.display = 'block';
+        return;
+      }
+      document.getElementById('report-loading').style.display = 'none';
+      document.getElementById('report-content').style.display = 'block';
+      document.getElementById('report-seller').textContent = data.seller_name || '—';
+      document.getElementById('report-store').textContent = data.store_name || '—';
+      document.getElementById('report-date').textContent = data.date || '—';
+      document.getElementById('report-start').textContent = data.shift_start || '—';
+      document.getElementById('report-end').textContent = data.shift_end || '—';
+      document.getElementById('report-revenue').textContent = (data.total_revenue != null) ? data.total_revenue : '0';
+      document.getElementById('report-cost').textContent = (data.total_cost != null) ? data.total_cost : '0';
+      document.getElementById('report-profit').textContent = (data.total_profit != null) ? data.total_profit : '0';
+      var tbody = document.getElementById('report-sales');
+      (data.sales || []).forEach(function(s, i) {
+        var time = s.created_at ? s.created_at.slice(11, 16) : '—';
+        var typeLabel = (s.operation_type === 'return') ? 'Возврат' : 'Продажа';
+        var typeStyle = (s.operation_type === 'return') ? ' style="color:#e53e3e;"' : '';
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + (i + 1) + '</td><td' + typeStyle + '>' + typeLabel + '</td><td>' + time + '</td><td>' + (s.total_revenue != null ? s.total_revenue : 0) + '</td><td>' + (s.total_cost != null ? s.total_cost : 0) + '</td><td>' + (s.total_profit != null ? s.total_profit : 0) + '</td>';
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function() {
+      document.getElementById('report-loading').style.display = 'none';
+      document.getElementById('report-error').style.display = 'block';
+    });
+})();
+  </script>
+</body>
+</html>

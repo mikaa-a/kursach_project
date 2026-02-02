@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_title %}Главная страница{% endblock %}
+{% block content %}
+<div class="card">
+  <h3>Уведомления</h3>
+  {% if notifications %}
+  <ul class="notifications-list">
+    {% for n in notifications %}
+    <li>Товар «{{ n.product_name }}» на точке «{{ n.location_name }}»: остаток <strong>{{ n.quantity }}</strong> (ниже порога 5)</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Нет уведомлений о низких остатках.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block page_title %}Товары{% endblock %}
+{% block content %}
+<div class="actions-row">
+  <button type="button" class="btn btn-primary" onclick="openAddCategory()">Добавить категорию</button>
+  <button type="button" class="btn btn-primary" onclick="openAddProduct()">Добавить товар</button>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>название</th>
+        <th>категория</th>
+        <th>ед. измерения</th>
+        <th>закупочная цена</th>
+        <th>розничная цена</th>
+        <th>минимальный остаток</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products_list %}
+      <tr class="row-clickable" data-id="{{ p.id }}">
+        <td>{{ p.id }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.category }}</td>
+        <td>{{ p.unit }}</td>
+        <td>{{ "%.2f"|format(p.purchase_price) }}</td>
+        <td>{{ "%.2f"|format(p.retail_price) }}</td>
+        <td>{{ p.min_stock }}</td>
+      </tr>
+      {% endfor %}
+      {% if not products_list %}
+      <tr><td colspan="7">Нет данных</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+<div id="modal-prod" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center;">
+  <div class="modal-content" style="background:#fff; padding:1.5rem; border-radius:0.5rem; max-width:400px; width:100%; margin:1rem;">
+    <h3 id="modal-prod-title" style="margin-top:0;">Добавить товар</h3>
+    <div class="form-group"><label>Название</label><input id="prod-name" type="text"></div>
+    <div class="form-group"><label>Категория</label><select id="prod-category"><option value="">—</option></select></div>
+    <div class="form-group"><label>Ед. измерения</label><input id="prod-unit" type="text" value="шт"></div>
+    <div class="form-group"><label>Закупочная цена</label><input id="prod-purchase" type="number" step="0.01" value="0"></div>
+    <div class="form-group"><label>Розничная цена</label><input id="prod-retail" type="number" step="0.01" value="0"></div>
+    <div class="form-group"><label>Минимальный остаток</label><input id="prod-min" type="number" min="0" value="5"></div>
+    <p id="prod-error" class="error" style="display:none;"></p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary" id="btn-prod-cancel">Отмена</button>
+      <button type="button" class="btn btn-primary" id="btn-prod-save">Сохранить</button>
+      <button type="button" class="btn btn-danger" id="btn-prod-delete" style="display:none; margin-left:auto;">Удалить</button>
+    </div>
+  </div>
+</div>
+<div id="modal-category" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center;">
+  <div class="modal-content" style="background:#fff; padding:1.5rem; border-radius:0.5rem; max-width:400px; width:100%; margin:1rem;">
+    <h3 style="margin-top:0;">Добавить категорию</h3>
+    <div class="form-group"><label>Название</label><input id="cat-name" type="text" placeholder="Введите название категории"></div>
+    <p id="cat-error" class="error" style="display:none;"></p>
+    <div style="display:flex; gap:0.5rem;">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-category')">Отмена</button>
+      <button type="button" class="btn btn-primary" onclick="saveCategory()">Сохранить</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function loadCategories() {
+  var s = document.getElementById('prod-category');
+  var emptyOpt = document.createElement('option');
+  emptyOpt.value = '';
+  emptyOpt.textContent = '—';
+  s.innerHTML = '';
+  s.appendChild(emptyOpt);
+  fetch('/api/categories', { credentials: 'same-origin' })
+    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(res) {
+      var cats = res.ok && Array.isArray(res.data) ? res.data : [];
+      cats.forEach(function(c) {
+        var o = document.createElement('option');
+        o.value = c.id != null ? c.id : '';
+        o.textContent = c.name || '';
+        s.appendChild(o);
+      });
+    })
+    .catch(function() {});
+}
+loadCategories();
+function openAddCategory() {
+  document.getElementById('cat-name').value = '';
+  document.getElementById('cat-error').textContent = '';
+  document.getElementById('cat-error').style.display = 'none';
+  document.getElementById('modal-category').style.display = 'flex';
+}
+var editingProductId = null;
+function openAddProduct() {
+  editingProductId = null;
+  document.getElementById('modal-prod-title').textContent = 'Добавить товар';
+  document.getElementById('btn-prod-delete').style.display = 'none';
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-category').value = '';
+  document.getElementById('prod-unit').value = 'шт';
+  document.getElementById('prod-purchase').value = '0';
+  document.getElementById('prod-retail').value = '0';
+  document.getElementById('prod-min').value = '5';
+  document.getElementById('prod-error').textContent = '';
+  document.getElementById('prod-error').style.display = 'none';
+  document.getElementById('modal-prod').style.display = 'flex';
+}
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function saveCategory() {
+  var name = document.getElementById('cat-name').value.trim();
+  var errEl = document.getElementById('cat-error');
+  if (!name) { errEl.textContent = 'Укажите название категории'; errEl.style.display = 'block'; return; }
+  fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name })
+  })
+  .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data || {} }; }).catch(function() { return { ok: false, data: {} }; }); })
+  .then(function(res) {
+    if (res.ok && res.data && res.data.id) {
+      closeModal('modal-category');
+      loadCategories();
+      document.getElementById('prod-category').value = String(res.data.id);
+    } else {
+      errEl.textContent = (res.data && res.data.error) || 'Ошибка сохранения. Возможно, таблица категорий не создана в БД.';
+      errEl.style.display = 'block';
+    }
+  })
+  .catch(function() { errEl.textContent = 'Ошибка сохранения'; errEl.style.display = 'block'; });
+}
+function getProductPayload() {
+  return {
+    name: document.getElementById('prod-name').value.trim(),
+    category_id: document.getElementById('prod-category').value || null,
+    unit: document.getElementById('prod-unit').value.trim() || 'шт',
+    purchase_price: parseFloat(document.getElementById('prod-purchase').value) || 0,
+    retail_price: parseFloat(document.getElementById('prod-retail').value) || 0,
+    min_stock: parseInt(document.getElementById('prod-min').value, 10) || 5
+  };
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.row-clickable').forEach(function(tr) {
+    tr.addEventListener('click', function(e) {
+      var id = parseInt(tr.getAttribute('data-id'), 10);
+      if (!id) return;
+      editingProductId = id;
+      document.getElementById('modal-prod-title').textContent = 'Редактировать товар';
+      document.getElementById('btn-prod-delete').style.display = 'inline-block';
+      var errEl = document.getElementById('prod-error'); errEl.textContent = ''; errEl.style.display = 'none';
+      fetch('/api/products/' + id, { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+        document.getElementById('prod-name').value = data.name || '';
+        document.getElementById('prod-category').value = data.category_id != null ? String(data.category_id) : '';
+        document.getElementById('prod-unit').value = data.unit || 'шт';
+        document.getElementById('prod-purchase').value = data.purchase_price != null ? data.purchase_price : '0';
+        document.getElementById('prod-retail').value = data.retail_price != null ? data.retail_price : '0';
+        document.getElementById('prod-min').value = data.min_stock != null ? data.min_stock : '5';
+        document.getElementById('modal-prod').style.display = 'flex';
+      }).catch(function() { errEl.textContent = 'Ошибка загрузки'; errEl.style.display = 'block'; });
+    });
+  });
+  document.getElementById('btn-prod-cancel').addEventListener('click', function() { closeModal('modal-prod'); });
+  document.getElementById('btn-prod-save').addEventListener('click', function() {
+    var payload = getProductPayload();
+    var errEl = document.getElementById('prod-error');
+    if (!payload.name) { errEl.textContent = 'Укажите название'; errEl.style.display = 'block'; return; }
+    var url = '/api/products'; var method = 'POST';
+    if (editingProductId) { url = '/api/products/' + editingProductId; method = 'PUT'; }
+    fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; }
+        else { closeModal('modal-prod'); location.reload(); }
+      })
+      .catch(function() { errEl.textContent = 'Ошибка сохранения'; errEl.style.display = 'block'; });
+  });
+  document.getElementById('btn-prod-delete').addEventListener('click', function() {
+    if (!editingProductId) return;
+    if (!confirm('Удалить этот товар? Запись будет деактивирована.')) return;
+    var errEl = document.getElementById('prod-error');
+    fetch('/api/products/' + editingProductId, { method: 'DELETE', credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; }
+      else { closeModal('modal-prod'); location.reload(); }
+    }).catch(function() { errEl.textContent = 'Ошибка удаления'; errEl.style.display = 'block'; });
+  });
+});
+</script>
+{% endblock %}

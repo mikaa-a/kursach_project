@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block page_title %}Отчеты{% endblock %}
+{% block content %}
+<div class="form-group" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+  <label style="align-self:center;">Период:</label>
+  <input type="date" id="date-from">
+  <input type="date" id="date-to">
+  <button type="button" class="btn btn-primary" onclick="loadSummary()">Показать</button>
+</div>
+<div class="card">
+  <h3>Сводка по выручке, прибыли и рентабельности (с учётом возвратов)</h3>
+  <p><strong>Выручка (продажи):</strong> <span id="total-revenue-sales">—</span> руб.</p>
+  <p><strong>Возвраты:</strong> <span id="total-revenue-returns">—</span> руб.</p>
+  <p><strong>Выручка чистая:</strong> <span id="total-revenue">—</span> руб.</p>
+  <p><strong>Себестоимость:</strong> <span id="total-cost">—</span> руб.</p>
+  <p><strong>Валовая прибыль:</strong> <span id="total-profit">—</span> руб.</p>
+  <p><strong>Маржинальность:</strong> <span id="margin">—</span> %</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function loadSummary() {
+  var from = document.getElementById('date-from').value;
+  var to = document.getElementById('date-to').value;
+  var url = '/api/reports/summary';
+  if (from) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'date_from=' + encodeURIComponent(from);
+  if (to) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'date_to=' + encodeURIComponent(to);
+  fetch(url).then(r=>r.json()).then(data => {
+    if (data.error) return;
+    document.getElementById('total-revenue-sales').textContent = (data.total_revenue_sales != null ? data.total_revenue_sales.toFixed(2) : '—');
+    document.getElementById('total-revenue-returns').textContent = (data.total_revenue_returns != null ? data.total_revenue_returns.toFixed(2) : '0.00');
+    document.getElementById('total-revenue').textContent = data.total_revenue.toFixed(2);
+    document.getElementById('total-cost').textContent = data.total_cost.toFixed(2);
+    document.getElementById('total-profit').textContent = data.total_profit.toFixed(2);
+    document.getElementById('margin').textContent = data.margin_percent.toFixed(1);
+  });
+}
+</script>
+{% endblock %}

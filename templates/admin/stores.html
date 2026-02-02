@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block page_title %}Магазины{% endblock %}
+{% block head_scripts %}
+<script src="{{ url_for('static', filename='js/phone-mask.js') }}?v=1"></script>
+<script src="{{ url_for('static', filename='js/stores.js') }}?v=6" defer></script>
+{% endblock %}
+{% block content %}
+<div class="actions-row">
+  <button type="button" class="btn btn-primary" onclick="storesOpenAdd()">Добавить магазин</button>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>название</th>
+        <th>адрес</th>
+        <th>телефон</th>
+        <th>остатки</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stores_list %}
+      <tr class="row-clickable" data-id="{{ s.id }}" onclick="storesOpenEdit({{ s.id }})">
+        <td>{{ s.id }}</td>
+        <td>{{ s.name }}</td>
+        <td>{{ s.address }}</td>
+        <td>{{ s.phone }}</td>
+        <td><a href="#" class="btn btn-sm btn-secondary btn-stock" data-id="{{ s.id }}" data-type="store" data-title="{{ s.name|e }}" onclick="event.stopPropagation(); storesOpenStock(this); return false;">остатки</a></td>
+      </tr>
+      {% endfor %}
+      {% if not stores_list %}
+      <tr><td colspan="5">Нет данных</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+<div id="modal-stock" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:101; align-items:center; justify-content:center;">
+  <div class="modal-content" style="background:#fff; padding:1.5rem; border-radius:0.5rem; max-width:560px; width:100%; margin:1rem;">
+    <h3 id="modal-stock-title" style="margin-top:0;">Остатки</h3>
+    <div class="card" style="margin-bottom:1rem;">
+      <table>
+        <thead>
+          <tr><th>Наименование товара</th><th>Количество</th></tr>
+        </thead>
+        <tbody id="modal-stock-tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+      <button type="button" class="btn btn-secondary" onclick="storesCloseStock()">Закрыть</button>
+    </div>
+  </div>
+</div>
+<div id="modal-store" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100;">
+  <div class="modal-content" style="background:#fff; padding:1.5rem; border-radius:0.5rem; max-width:400px; width:100%;">
+    <h3 id="modal-store-title" style="margin-top:0;">Добавить магазин</h3>
+    <div class="form-group"><label>Название</label><input id="store-name" type="text"></div>
+    <div class="form-group"><label>Адрес</label><input id="store-address" type="text"></div>
+    <div class="form-group"><label>Телефон</label><input id="store-phone" type="text" class="phone-input" placeholder="+7 (___) ___-__-__" maxlength="18"></div>
+    <p id="store-error" class="error" style="display:none;"></p>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary" onclick="storesCloseForm()">Отмена</button>
+      <button type="button" class="btn btn-primary" onclick="storesSave()">Сохранить</button>
+      <button type="button" class="btn btn-danger" id="btn-store-delete" style="display:none; margin-left:auto;" onclick="storesDelete()">Удалить</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}{% endblock %}

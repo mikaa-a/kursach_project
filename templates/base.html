@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Система учёта{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_scripts %}{% endblock %}
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <a href="{{ brand_url }}" class="brand">Система учёта</a>
+      <nav>
+        {% for item in nav_items %}
+          <a href="{{ item.url }}" class="{{ 'active' if item.active else '' }}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
+      <a href="{{ url_for('logout') }}" class="logout">выход</a>
+    </aside>
+    <main class="main">
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+      {% if user %}
+      <div class="user-badge"><span class="label">Пользователь:</span> {{ user.full_name }} ({{ 'администратор системы (директор)' if user.role == 'admin' else 'продавец' }})</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

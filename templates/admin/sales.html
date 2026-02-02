@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block page_title %}Продажи{% endblock %}
+{% block content %}
+<div class="form-group" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+  <label style="align-self:center;">Период:</label>
+  <input type="date" id="date-from">
+  <input type="date" id="date-to">
+  <button type="button" class="btn btn-primary" onclick="loadSales()">Показать</button>
+</div>
+<div class="card">
+  <h3>Список продаж</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>тип</th>
+        <th>дата</th>
+        <th>магазин</th>
+        <th>продавец</th>
+        <th>выручка</th>
+        <th>себестоимость</th>
+        <th>прибыль</th>
+      </tr>
+    </thead>
+    <tbody id="sales-tbody">
+      <tr><td colspan="8">Загрузите данные</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function loadSales() {
+  var from = document.getElementById('date-from').value;
+  var to = document.getElementById('date-to').value;
+  var url = '/api/reports/sales';
+  if (from) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'date_from=' + encodeURIComponent(from);
+  if (to) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'date_to=' + encodeURIComponent(to);
+  fetch(url).then(r=>r.json()).then(data => {
+    if (data.error) { document.getElementById('sales-tbody').innerHTML = '<tr><td colspan="8">' + data.error + '</td></tr>'; return; }
+    var html = '';
+    data.forEach(function(row) {
+      var typeLabel = (row.operation_type === 'return') ? 'Возврат' : 'Продажа';
+      var typeClass = (row.operation_type === 'return') ? ' style="color:var(--danger);"' : '';
+      var ref = (row.original_operation_id && row.operation_type === 'return') ? ' (к №' + row.original_operation_id + ')' : '';
+      html += '<tr><td>' + row.id + '</td><td' + typeClass + '>' + typeLabel + ref + '</td><td>' + row.created_at.slice(0,19) + '</td><td>' + row.store_name + '</td><td>' + row.seller_name + '</td><td>' + row.total_revenue.toFixed(2) + '</td><td>' + row.total_cost.toFixed(2) + '</td><td>' + row.total_profit.toFixed(2) + '</td></tr>';
+    });
+    document.getElementById('sales-tbody').innerHTML = html || '<tr><td colspan="8">Нет данных</td></tr>';
+  });
+}
+</script>
+{% endblock %}
